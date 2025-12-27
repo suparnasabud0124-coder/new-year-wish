@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎉 New Year Countdown 🎉</title>
+<style>
+  /* Reset & Body */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { 
+    font-family: 'Arial', sans-serif; 
+    background: radial-gradient(circle at bottom, #000010, #000030);
+    color: #fff; 
+    height: 100vh; 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    overflow: hidden; 
+    flex-direction: column;
+  }
+
+  h1 {
+    font-size: 3em;
+    text-align: center;
+    text-shadow: 0 0 10px #fff, 0 0 20px #ff0;
+    margin-bottom: 40px;
+  }
+
+  #countdown {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 40px;
+  }
+
+  #countdown div {
+    background: rgba(0,0,50,0.7);
+    padding: 20px;
+    border-radius: 10px;
+    min-width: 80px;
+    text-align: center;
+    box-shadow: 0 0 15px #ff0;
+    animation: pulse 1s infinite;
+  }
+
+  #countdown div span {
+    display: block;
+    font-size: 2em;
+    font-weight: bold;
+    color: #ffea00;
+  }
+
+  #countdown div small {
+    display: block;
+    font-size: 0.8em;
+    color: #ccc;
+  }
+
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+  }
+
+  button {
+    background: #ffea00;
+    border: none;
+    padding: 15px 30px;
+    font-size: 1em;
+    font-weight: bold;
+    border-radius: 30px;
+    margin: 10px;
+    cursor: pointer;
+    box-shadow: 0 0 15px #ffea00;
+    transition: 0.3s;
+  }
+
+  button:hover { box-shadow: 0 0 25px #fff; }
+
+  #musicMessage {
+    margin-top: 15px;
+    font-size: 1em;
+    color: #00ff00;
+    text-shadow: 0 0 5px #00ff00;
+    display: none;
+  }
+
+  /* Fireworks Canvas */
+  canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: -1;
+  }
+
+</style>
+</head>
+<body>
+
+<h1>🎉 New Year Countdown 🎉</h1>
+
+<div id="countdown">
+  <div><span id="days">00</span><small>Days</small></div>
+  <div><span id="hours">00</span><small>Hours</small></div>
+  <div><span id="minutes">00</span><small>Minutes</small></div>
+  <div><span id="seconds">00</span><small>Seconds</small></div>
+</div>
+
+<button id="playButton">🎵 Tap to Start / Pause</button>
+<button id="messageButton">💌 Read My Message</button>
+<div id="musicMessage">🎶 Music Playing...</div>
+
+<audio id="bgMusic" src="newyear.mp3" loop></audio>
+
+<canvas id="fireworksCanvas"></canvas>
+
+<script>
+  // Countdown Timer
+  const targetDate = new Date('2026-01-01T00:00:00');
+  const daysEl = document.getElementById('days');
+  const hoursEl = document.getElementById('hours');
+  const minutesEl = document.getElementById('minutes');
+  const secondsEl = document.getElementById('seconds');
+
+  function updateCountdown() {
+    const now = new Date();
+    const diff = targetDate - now;
+
+    if(diff <= 0) {
+      daysEl.textContent = '00';
+      hoursEl.textContent = '00';
+      minutesEl.textContent = '00';
+      secondsEl.textContent = '00';
+      return;
+    }
+
+    const days = Math.floor(diff / (1000*60*60*24));
+    const hours = Math.floor((diff / (1000*60*60)) % 24);
+    const minutes = Math.floor((diff / (1000*60)) % 60);
+    const seconds = Math.floor((diff / 1000) % 60);
+
+    daysEl.textContent = String(days).padStart(2,'0');
+    hoursEl.textContent = String(hours).padStart(2,'0');
+    minutesEl.textContent = String(minutes).padStart(2,'0');
+    secondsEl.textContent = String(seconds).padStart(2,'0');
+  }
+
+  setInterval(updateCountdown, 1000);
+  updateCountdown();
+
+  // Music Play/Pause
+  const music = document.getElementById('bgMusic');
+  const playBtn = document.getElementById('playButton');
+  const musicMsg = document.getElementById('musicMessage');
+
+  playBtn.addEventListener('click', () => {
+    if(music.paused) {
+      music.play();
+      musicMsg.style.display = 'block';
+    } else {
+      music.pause();
+      musicMsg.style.display = 'none';
+    }
+  });
+
+  music.addEventListener('ended', () => { musicMsg.style.display='none'; });
+
+  // Fireworks
+  const canvas = document.getElementById('fireworksCanvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  let fireworks = [];
+  let particles = [];
+
+  function random(min,max){ return Math.random()*(max-min)+min; }
+
+  class Firework {
+    constructor(sx,sy,tx,ty){
+      this.x=sx; this.y=sy; this.tx=tx; this.ty=ty;
+      this.distanceToTarget = Math.hypot(tx-sx, ty-sy);
+      this.distanceTraveled = 0;
+      this.coordinates = [];
+      this.coordinateCount = 3;
+      while(this.coordinateCount--) this.coordinates.push([this.x,this.y]);
+      this.angle = Math.atan2(ty-sy, tx-sx);
+      this.speed = 5;
+      this.acceleration = 1.05;
+      this.brightness = random(50,70);
+      this.targetRadius = 1;
+    }
+    update(index){
+      this.coordinates.pop();
+      this.coordinates.unshift([this.x,this.y]);
+      this.speed *= this.acceleration;
+      const vx = Math.cos(this.angle)*this.speed;
+      const vy = Math.sin(this.angle)*this.speed;
+      this.distanceTraveled = Math.hypot(this.x+vx - this.x, this.y+vy - this.y);
+      if(this.distanceTraveled >= this.distanceToTarget){
+        createParticles(this.tx,this.ty);
+        fireworks.splice(index,1);
+      } else {
+        this.x += vx; this.y += vy;
+      }
+    }
+    draw(){
+      ctx.beginPath();
+      ctx.moveTo(this.coordinates[this.coordinates.length-1][0], this.coordinates[this.coordinates.length-1][1]);
+      ctx.lineTo(this.x,this.y);
+      ctx.strokeStyle = 'hsl('+random(0,360)+',100%,'+this.brightness+'%)';
+      ctx.stroke();
+    }
+  }
+
+  class Particle {
+    constructor(x,y){
+      this.x=x; this.y=y;
+      this.coordinates=[];
+      this.coordinateCount=5;
+      while(this.coordinateCount--) this.coordinates.push([this.x,this.y]);
+      this.angle = random(0, Math.PI*2);
+      this.speed = random(1,10);
+      this.friction = 0.95;
+      this.gravity = 0.7;
+      this.hue = random(0,360);
+      this.brightness = random(50,80);
+      this.alpha = 1;
+      this.decay = random(0.015,0.03);
+    }
+    update(index){
+      this.coordinates.pop();
+      this.coordinates.unshift([this.x,this.y]);
+      this.speed *= this.friction;
+      this.x += Math.cos(this.angle)*this.speed;
+      this.y += Math.sin(this.angle)*this.speed + this.gravity;
+      this.alpha -= this.decay;
+      if(this.alpha <= 0.05) particles.splice(index,1);
+    }
+    draw(){
+      ctx.beginPath();
+      ctx.moveTo(this.coordinates[this.coordinates.length-1][0], this.coordinates[this.coordinates.length-1][1]);
+      ctx.lineTo(this.x,this.y);
+      ctx.strokeStyle = 'hsla('+this.hue+',100%,'+this.brightness+'%,'+this.alpha+')';
+      ctx.stroke();
+    }
+  }
+
+  function createParticles(x,y){
+    let particleCount = 30;
+    while(particleCount--) particles.push(new Particle(x,y));
+  }
+
+  function loop(){
+    requestAnimationFrame(loop);
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.globalCompositeOperation = 'lighter';
+
+    fireworks.forEach((fw,index)=>{
+      fw.update(index);
+      fw.draw();
+    });
+    particles.forEach((p,index)=>{
+      p.update(index);
+      p.draw();
+    });
+
+    if(random(0,1) < 0.05) fireworks.push(new Firework(canvas.width/2, canvas.height, random(0,canvas.width), random(0,canvas.height/2)));
+  }
+
+  loop();
+
+  window.addEventListener('resize', () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  });
+
+  document.getElementById("messageButton").addEventListener("click", () => {
+    window.location.href = "message.html";
+  });
+
+</script>
+</body>
+</html>
